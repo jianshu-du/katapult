@@ -7,6 +7,7 @@
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
 #include <string.h> // memcpy
+#include "autoconf.h"
 #include "board/io.h" // readb
 #include "board/irq.h" // irq_save
 #include "board/misc.h" // console_sendf
@@ -328,7 +329,24 @@ command_get_canbus_id(uint32_t *args)
 void
 canserial_set_uuid(uint8_t *raw_uuid, uint32_t raw_uuid_len)
 {
+#if defined(CONFIG_CAN_IDS_NUMBER)
+    uint64_t hash = 0x0, the_ids = CONFIG_CAN_IDS_NUMBER;
+    if (!CONFIG_CAN_IDS_NUMBER_CHIPID)
+    {
+        while(the_ids)
+        {
+            hash <<= 8;
+            hash |= (the_ids & 0xFF);
+            the_ids >>= 8;
+        }
+    }
+    else
+    {
+        hash = fasthash64(raw_uuid, raw_uuid_len, 0xA16231A7);
+    }
+#else
     uint64_t hash = fasthash64(raw_uuid, raw_uuid_len, 0xA16231A7);
+#endif
     memcpy(CanData.uuid, &hash, sizeof(CanData.uuid));
     canserial_notify_rx();
 }
